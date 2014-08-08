@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8">
+
+    <title>ʕ　 ﾟ皿ﾟ ʔ cgoやってみた @yuroyoro</title>
+
+    <meta name="description" content="A framework for easily creating beautiful presentations using HTML">
+    <meta name="author" content="Hakim El Hattab">
+
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <link rel="stylesheet" href="css/reveal.min.css">
+    <link rel="stylesheet" href="css/theme/night.css" id="theme">
+
+    <!-- For syntax highlighting -->
+    <link rel="stylesheet" href="lib/css/zenburn.css">
+
+    <!-- If the query includes 'print-pdf', use the PDF print sheet -->
+    <script>
+      document.write( '<link rel="stylesheet" href="css/print/' + ( window.location.search.match( /print-pdf/gi ) ? 'pdf' : 'paper' ) + '.css" type="text/css" media="print">' );
+    </script>
+
+    <!--[if lt IE 9]>
+    <script src="lib/js/html5shiv.js"></script>
+    <![endif]-->
+    <style type="text/css">
+     div.slides{
+       background: url('img/Background_nega_org.png') no-repeat fixed right bottom;
+     }
+    </style>
+  </head>
+
+  <body>
+
+    <div class="reveal">
+
+      <!-- Any section element inside of this container is displayed as a slide -->
+      <div class="slides">
+        <section>
+          <h2>ʕ　 ﾟ皿ﾟ ʔ cgoやってみた</h2>
+          <br/>
+          <h3>2014/8/9 Go lang勉強会</h3>
+          <p>
+            <small><a href="https://twitter.com/yuroyoro">@yuroyoro</a></small>
+          </p>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ### お前、誰
+
+            * [@yuroyoro](https://twitter.com/yuroyoro)
+            * Scala老害/関数型言語er
+            * 仕事ではレールズ
+            * [Scalout Inc.](http://www.scaleout.jp/) We're hiring!
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ### Q. Goを何に使っていますか?
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ### A. 某ブラウザゲー用ツール
+          </script>
+        </section>
+
+        <section>
+          <p>
+            <img src="./img/kancolle.png" style="background-color:#FFF"/>
+          </p>
+        </section>
+
+        <section>
+          <h3>GoのAST(抽象構文木)を可視化するツール</h3>
+
+          <p>
+            <img src="./img/goast_viewer.png" style="background-color:#FFF"/>
+          </p>
+
+          <a href="http://goast.yuroyoro.net/">http://goast.yuroyoro.net/</a>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ### cgo is なに?
+
+            * C言語のライブラリをリンクして相互に呼び出せる
+            * FFI(Foreign Function Interface)
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ## GoからCの関数を呼び出す
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            Hello, cgo
+
+```go
+package main
+
+/*
+#include <stdio.h>
+#include <stdlib.h>
+
+void hello(char *str)
+{
+	printf("Hello, cgo : %s\n",  str);
+}
+*/
+import "C"
+import "unsafe"
+
+func main() {
+	str := C.CString("Gopher")
+	defer C.free(unsafe.Pointer(str))
+
+	C.hello(str)
+}
+```
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+
+`import "C"`の上に書いたコメントはCのソースコードとして認識される
+
+```go
+/*
+#include <stdio.h>
+#include <stdlib.h>
+
+void hello(char *str)
+{
+	printf("Hello, cgo : %s\n",  str);
+}
+*/
+import "C"
+```
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+`C.hello`で呼び出す。
+
+```go
+func main() {
+	str := C.CString("Gopher")        // Cに渡す`char*`を用意
+	defer C.free(unsafe.Pointer(str)) // deferで解放する
+
+	C.hello(str)
+}
+```
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ### "C"というpackageにcgoで書いた関数や型などが入っている
+
+            * `int` -> `C.int`
+            * `void *` -> `unsafe.Pointer`
+            * `typedef` はそのままの名前で使える
+            * 構造体は`struct_`というprefixが付く
+            * `struct foo` -> `C.struct_fo`
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+             ### GoとCでの型変換
+
+             * `C.CString("foo")` -> `*C.char`
+             * `C.GoString(cchar) -> "foo"
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ### メモリの解放
+
+            * Go側で確保した領域はGCされない
+            * `#include <stdlib.h>`
+            * `defer C.free(unsafe.Pointer(ptr))`
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ## CからGoの関数を呼び出す
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+Goの関数の直前に`//export`でC側にexport
+
+export.go
+```go
+package main
+
+import "C"
+import "runtime"
+
+//export GoVersion
+func GoVersion() *C.char {
+        version := runtime.Version()
+        return C.CString(version)
+}
+```
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+
+C側からは呼び出し
+
+main.go
+```go
+package main
+
+/*
+#include <stdio.h>
+#include <stdlib.h>
+
+char* GoVersion();
+
+void print_version()
+{
+        char *ver = GoVersion(); // Goの関数呼び出し
+        printf("Go Version is %s\n",  ver);
+        free(ver); // C側でfree
+}
+*/
+import "C"
+
+func main() {
+        C.print_version()
+}
+```
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ### ハマりどころ
+
+            * `//export`が書いてあるファイルにはCの関数定義を書いてはならない
+            * cgoが生成する" _cgo_export.h"が複数回コンパイルされるので"duplicate symbol"エラーになる
+            * http://golang.org/doc/go1.html#cmd_cgo
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ### Tips
+
+            * `go tool cgo <sourcefile>`でcgoが生成する*.hや*.cや*.oを吐く
+            * cgoで何が起こっているのか確認できる
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ## Cのライブラリとリンクする
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ### 例: LevelDBを使ってみる
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+
+`#cgo`ディレクティブにLDFLAGSやpkg-configを書ける
+```go
+// #cgo LDFLAGS: -lleveldb
+// #include <stdlib.h>
+// #include "leveldb/c.h"
+```
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+あとは普通に呼び出すだけ
+
+```go
+// Open LevelDB with given name
+func OpenLevelDB(path string) (leveldb *LevelDB, err error) {
+
+	cpath := C.CString(path) // convert path to c string
+	defer C.leveldb_free(unsafe.Pointer(cpath))
+
+	// allocate LevelDB Option struct to open
+	opt := C.leveldb_options_create()
+	defer C.leveldb_free(unsafe.Pointer(opt))
+
+	// set open option
+	C.leveldb_options_set_create_if_missing(opt, C.uchar(1))
+
+	// open leveldb
+	var cerr *C.char
+	cleveldb := C.leveldb_open(opt, cpath, &cerr)
+
+	if cerr != nil {
+		defer C.leveldb_free(unsafe.Pointer(cerr))
+		return nil, errors.New(C.GoString(cerr))
+	}
+
+	return &LevelDB{cleveldb, path}, nil
+}
+```
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ### DEMO
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+ʕ　 ﾟ皿ﾟ ʔ なお、LevelDBのGo bindingは
+
+既に存在するので
+
+貴様が書く必要は無かった
+
+https://github.com/jmhodges/levigo
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ## ʕ　 ﾟ皿ﾟ ʔ
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ## C++とcgo
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ### 例: GoにV8を組み込んでjavascript実行
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            go buildでカレントディレクトリ内の*.cや*.cppを同時にコンパイルしてくれる
+
+```
+v8
+├── main.go
+├── v8runner.go
+├── v8wrapper.cpp
+└── v8wrapper.h
+```
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+
+`extern "C"`でc側に公開する
+
+v8wrapper.h
+```cpp
+#ifdef __cplusplus
+extern "C" {
+#endif
+    // compiles and executes javascript and returns the script return value as string
+    char * runv8(const char *jssrc);
+
+#ifdef __cplusplus
+}
+#endif
+```
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ### DEMO
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+ʕ　 ﾟ皿ﾟ ʔ なお、v8のGo bindingは
+
+既に存在するので
+
+貴様が書く必要は無かった
+
+https://github.com/idada/v8.go/
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ## ʕ　 ﾟ皿ﾟ ʔ
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ## Goの関数をCのcallbackに
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ### 例:  libgit2のcallbackにGoの関数を使う
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+callbackとして使うGoの関数をexportしておく
+
+callback.go
+```go
+/*
+#include <git2.h>
+*/
+import "C"
+import "fmt"
+
+//export TreeWalker
+func TreeWalker(entry *C.git_tree_entry) {
+	cname := C.git_tree_entry_name(entry)
+	filename := C.GoString(cname)
+	fmt.Println(filename)
+}
+```
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+exportしたGoの関数を呼び出すC側の関数を用意して、
+
+それをcallbackにする
+
+main.go
+```go
+/*
+#cgo LDFLAGS: -lgit2
+#include <stdio.h>
+#include <stdlib.h>
+#include <git2.h>
+
+int TreeWalker(const git_tree_entry *entry);
+
+int walk_cb(const char *root,
+            const git_tree_entry *entry,
+            void *payload)
+{
+
+	TreeWalker(entry);
+	return 0;
+}
+
+int tree_walk(const git_tree *tree)
+{
+	int error = git_tree_walk(tree, GIT_TREEWALK_PRE, walk_cb, NULL);
+	return error;
+}
+*/
+```
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ### DEMO
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+ʕ　 ﾟ皿ﾟ ʔ なお、libgit2のGo bindingは
+
+既に存在するので
+
+貴様が書く必要は無かった
+
+https://github.com/libgit2/git2go
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ## ʕ　 ﾟ皿ﾟ ʔ
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ʕ　 ﾟ皿ﾟ ʔ メジャーなライブラリのGo binding大抵はすでに存在する
+
+            [Go Bindings for Various External APIs](http://go-lang.cat-v.org/library-bindings)
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ʕ　 ﾟ皿ﾟ ʔ コード書き始める前にGithub検索しろ
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ## まとめ
+
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ### cgoいいところ
+
+            * 簡単なwrapper書くのに便利
+            * go buildでまとめてコンパイル
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            ### cgoつらいとこ
+
+            * メモリ管理
+            * ダイナミックリンク
+            * gdb使えなかった
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+            このSlideとサンプルコード
+
+            https://github.com/yuroyoro/trying_cgo
+          </script>
+        </section>
+
+        <section data-markdown>
+          <script type="text/template">
+## 資料
+* cgo - The Go Programming Language http://golang.org/cmd/cgo/
+* [Go & cgo: integrating existing C code with Go](http://akrennmair.github.io/golang-cgo-slides/#1)
+* [cgo の基本的な使い方とポインタ周りのTips (Go v1.2) - LESS IS MORE](http://r9y9.github.io/blog/2014/03/22/cgo-tips/)
+          </script>
+        </section>
+
+      </div>
+
+    </div>
+
+    <script src="lib/js/head.min.js"></script>
+    <script src="js/reveal.min.js"></script>
+
+    <script>
+
+      // Full list of configuration options available here:
+      // https://github.com/hakimel/reveal.js#configuration
+      Reveal.initialize({
+        controls: true,
+        progress: true,
+        history: true,
+        center: true,
+
+        theme: Reveal.getQueryHash().theme, // available themes are in /css/theme
+        transition: Reveal.getQueryHash().transition || 'fade', // default/cube/page/concave/zoom/linear/fade/none
+
+        // Optional libraries used to extend on reveal.js
+        dependencies: [
+          { src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+          { src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+          { src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+          { src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+          { src: 'plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },
+          { src: 'plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } }
+        ]
+      });
+
+    </script>
+
+  </body>
+</html>

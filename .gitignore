@@ -1,0 +1,7 @@
+*/_obj
+go_from_c/go_from_c
+hello_cgo/hello_cgo
+leveldb/leveldb
+leveldb/testdb/
+libgit2/libgit2
+v8/v8
